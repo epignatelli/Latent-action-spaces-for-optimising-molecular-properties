@@ -18,247 +18,100 @@
 \usepackage[inline]{enumitem}
 
 % Acronyms
+\glsdisablehyper
 \newacronym{rl}{RL}{Reinforcement Learning}
 \newacronym{mdp}{MDP}{Markov Decision Process}
 \newacronym{lam}{LAM}{Latent Action Model}
+\newacronym{vqvae}{VQ-VAE}{Vector Quantized Variational Autoencoder}
+\newacronym{rlhf}{RLHF}{Reinforcement Learning from Human Feedback}
+\newacronym{llm}{LLM}{Large Language Model}
+\newacronym{smiles}{SMILES}{Simplified Molecular Input Line Entry System}
 
-
-% \title{InterDiff: Interactive Autoregressive Diffusion Models for Target-aware 3D Ligand-Protein Generation}
-\title{InterDiff: Interactive Models for Target-Aware Molecule Generation}
+\title{Towards Latent Action Spaces for RL-based Molecule Generation}
 
 % Authors must not appear in the submitted version. They should be hidden
 % as long as the tmlr package is used without the [accepted] or [preprint] options.
 % Non-anonymous submissions will be rejected without review.
 
-\author{\name Kyunghyun Cho \email kyunghyun.cho@nyu.edu \\
-      \addr Department of Computer Science\\
-      University of New York
+\author{\name Author One \email author1@institution.edu \\
+      \addr Institution One
       \AND
-      \name Raia Hadsell \email raia@google.com \\
-      \addr DeepMind
-      \AND
-      \name Hugo Larochelle \email hugolarochelle@google.com\\
-      \addr Mila, Universit\'e de Montr\'eal \\
-      Google Research\\
-      CIFAR Fellow}
-
-% The \author macro works with any number of authors. Use \AND 
-% to separate the names and addresses of multiple authors.
+      \name Author Two \email author2@institution.edu \\
+      \addr Institution Two}
 
 \newcommand{\fix}{\marginpar{FIX}}
 \newcommand{\new}{\marginpar{NEW}}
 
-% some commands for comments that appear as coloured footnotes in the text
+% Coloured footnote comments for co-authors
 \newcommand{\edu}[1]{\textcolor{red}{\footnote{\textcolor{red}{\textbf{Edu: #1}}}}}
-\newcommand{\nag}[1]{\textcolor{blue}{\footnote{\textcolor{red}{\textbf{Nag: #1}}}}}
-\newcommand{\tom}[1]{\textcolor{green}{\footnote{\textcolor{red}{\textbf{Tom: #1}}}}}
+\newcommand{\nag}[1]{\textcolor{blue}{\footnote{\textcolor{blue}{\textbf{Nag: #1}}}}}
+\newcommand{\tom}[1]{\textcolor{green}{\footnote{\textcolor{green}{\textbf{Tom: #1}}}}}
 
-\def\month{MM}  % Insert correct month for camera-ready version
-\def\year{YYYY} % Insert correct year for camera-ready version
-\def\openreview{\url{https://openreview.net/forum?id=XXXX}} % Insert correct link to OpenReview for camera-ready version
+\def\month{MM}
+\def\year{YYYY}
+\def\openreview{\url{https://openreview.net/forum?id=XXXX}}
 
 
 \begin{document}
 
-
 \maketitle
 
 \begin{abstract}
-    Current processes for drug discovery are lengthy, costly, and resource intensive and traditional high-throughput screening methods cannot keep with the increasing complexity of chemical space, pressing for more effective methods to discover new drugs.
-    Recently, deep generative models set out to shorten this cycle by digitally simulating and automating this discovery process.
-    % In particular, target-aware generative models allow to directly control the generated molecule by specifying a target protein to bind to.
-    In particular, target-aware generative models represent the ultimate goal of \textit{de-novo} drug design, as they enable explicit control over the molecular generation process by specifying a protein target to bind to, making these models directly applicable to real-world drug discovery.
-    This process produces different molecules for different targets instantly within a single trained framework, i.e., without retraining.
-    However, these methods are limited to generation processes that either require a fixed size molecular graph, e.g. diffusion and flow-matching models, or that are additive: they generate molecules by autoregressively appending new atoms and bonds to the existing state of the molecule.
-    The process is not reversible: once an atom or bond is added, it cannot be removed or replaced, highly constraining the space of possible trajectories to generate a molecule.
-    Here, we introduce \textit{InterDiff}, an autoregressive model that learns a latent action space from data.
-    \textit{InterDiff} is the first model that allows for edit, replace, and delete operations in the generation process, and the first interactive autoregressive model that allows for external interventions \emph{during} generation.
-    We train \textit{InterDiff} on \textit{InterMol}, a new corpus of molecule generation sequences with edit, replace, and delete operations, and show that the learnt latent action space improves the quality of the generated molecules for \textit{de-novo} generation.
-    Finally, we finetune a \gls{rl} policy on the latent action space, rather than the canonical observable vocabulary space, and show that this improves on goal-conditioned generation.
 \end{abstract}
 
 
 \section{Introduction}
-% 1. Area: Drug discovery
-Finding new drugs is essential for addressing diseases where current therapies are inadequate, non-existent, or ineffective due to developed drug resistance \citep{singh2023drug}.
-This process is often lengthy \citep{deore2019stages}, costly \citep{dickson2009cost}, and resource-intensive \citep{paul2010improve}, with the average time to develop a new drug being around 10-15 years and costing over \$2 billion \citep{hughes2011principles}.
-Traditional high-throughput screening methods cannot keep with the increasing complexity of chemical space and yield low hit rates \citep{zhu2013hit}, pressing for more efficient and effective methods to discover new drugs.
 
-Recently, deep generative models set out to shorten this cycle by digitally simulating and automating this discovery process \citep{atomwise2024ai}\edu{We more citation of specific models to show that they kinda work}.
-Progress is strong for unconditional \textit{de-novo} generation \citep{cornet2024equivariant, vignac2023midi, dunn_mixed_2024}, where the goal is to generate novel molecules that are likely to have properties similar to those in a training dataset \citep{polykovskiy2020molecular, axelrod2022geom, brown2019guacamol},
-% \edu{Add citations for more datasets}
-but real progress requires goal-oriented generation: we need candidates conditioned on a protein target or on specific properties \citep{peng2022pocket2mol, corso2023diffdock, guan3d, morehead2025flowdock}.
-At inference time, these methods enable direct control over the wanted specificities of the generated molecules: by varying the target protein or the desired property, the same model will produce different molecules instantly, i.e., without retraining.
+Finding new drugs is essential for addressing diseases where current therapies are inadequate or ineffective \citep{singh2023drug}.
+Yet, the process is slow \citep{deore2019stages}, costly \citep{dickson2009cost}, and resource-intensive \citep{paul2010improve}: developing a new drug takes on average 10--15 years and can cost over \$2 billion \citep{hughes2011principles, dickson2009cost}, with traditional high-throughput screening yielding hit rates below 0.1\% \citep{zhu2013hit}.
+Overall, the scale of chemical space far exceeds what can be explored experimentally \citep{polishchuk2013estimation}, making computational methods not merely useful but necessary.
 
-% 2. Problem: Target-aware generation is hard
-% However, current methods for goal-conditioned generation are limited to autoregressive models that are additive: they generate molecules by autoregressively appending new atoms and bonds to the existing state of the molecule.
-However, current methods for goal-conditioned generation fall into two main families: (i) diffusion- or flow-matching-based models, and (ii) autoregressive models.
-Diffusion- or flow-matching-based models generate a complete molecular graph in one single trajectory but typically rely on a fixed (or upper-bounded) number of nodes\edu{needs citation}, making variable-size molecules inconvenient to handle\edu{needs citation}.
-On the other hand, autoregressive models are additive: they generate molecules by autoregressively appending new atoms and bonds to the existing state of the molecule\edu{needs citation}.
-% 3. Problem: Current methods are limited
-This process is not reversible: once an atom or bond is added, it cannot be removed or replaced, highly constraining the space of possible trajectories to generate a molecule.
-``\textit{How to perform edit or remove operations in the generation process?}'', ``\textit{How to learn this new space of possible trajectories from data?}'', and ``\textit{How the new generation rules impact the quality of the generation?}'' are still open questions.
+Recently, deep generative models set out to shorten this cycle by digitally simulating and automating this discovery process \citep{atomwise2024ai,?,?,?}.
+These models -- whether autoregressive \citep{cornet2024equivariant}, diffusion-based \citep{vignac2023midi}, or flow-matching \citep{dunn_mixed_2024} -- are trained to fit a data distribution: to generate molecules that look like those in a dataset.
+While results appear promising for this ex-novo generation, finding molecules that \textit{do} exhibit the desired properties -- e.g., solubility, bioavailability, binding affinity, toxicity -- are tied to the underlying physics and chemistry, and are much rarer in the data.
+Producing such molecules in a targeted way using ex-novo, unconditional generation is thus a harder, and relies only on the generalisation capabilities of the model: the hope that a model will stumble upon them by chance.
+Conditional generation models \citep{?}, on the other hand, can steer the generation process towards specific goals and molecular properties \citep{peng2022pocket2mol, corso2023diffdock, guan3d, morehead2025flowdock}.
+At inference time, these methods enable direct control over the wanted specificities of the generated molecules, for example, by varying the target molecule in a ligand-protein problem, or desired properties, such as solubility or toxicity, without retraining.
 
-% Our proposal
-In this work, we close this gap with \textit{InterDiff}, an \textbf{interactive} autoregressive model that learns a latent action space from the training data.
-The key idea is to \textbf{learn} a set of abstract primitives that include \textit{edit}, \textit{replace}, and \textit{delete} operations, and treat the generation as a sequence of reversible moves.
-First, we train \textit{InterDiff} on \textit{InterMol}, a new corpus of molecule generation sequences with edit, replace, and delete operations, and show that the learnt latent action space improves the quality of the generated molecules for \textit{de-novo} generation.
-Secondly, we finetune a \gls{rl} policy on the latent action space, rather than the canonical observable vocabulary space, and show that this improves the quality of the generated molecules for goal-conditioned and target-aware generation.
+A natural approach to steer this process towards desired properties is the pretrain-then-finetune paradigm that has proven transformative for language models \citep{ouyang2022training}: a model first acquires a strong prior over valid molecules from data, and is then finetuned with \gls{rl} against a reward that encodes the target property -- binding affinity, drug-likeness, synthetic accessibility—without requiring a differentiable objective.
 
-% Contributions
-In short, this works provides the following contributions:
-\begin{itemize}
-    \item We introduce \textit{InterDiff}, an autoregressive model that learns a latent action space from data.
-    \textit{InterDiff} is the \textbf{first} autoregressive model that:
-    \begin{enumerate}[label=\textit{\alph*)}]
-        \item is interactive: it allows for external interventions \emph{during} the generation process that instantly affect the state of the molecule,
-        \item learns a latent action space for molecule generation from the training data, and
-        \item allows for edit, replace, and delete operations in the generation process.
-    \end{enumerate}
-    \item We release \textit{InterMol}, a hand-crafted dataset of molecule generation sequences with edit, replace, and delete operations.
-    \item We show that training \textit{InterDiff} on \textit{InterMol} improves both on \textit{de-novo} generation and target-aware generation, and that the learnt latent action space provides a more effective space of intervention for a canonical reinforcement learning finetuning stage.
-\end{itemize}
+While \gls{rl} approaches to molecule generation exist \citep{zhou_optimization_2019, you2018graph, ghugare_searching_2023, hu2024novo, loeffler2024reinvent, yang_hit_2021}, they all share a common assumption: the action space is fixed before training begins, either as a token vocabulary -- treating each \gls{smiles} character or atom type as a primitive action \citep{ghugare_searching_2023, hu2024novo, loeffler2024reinvent} -- or as a hand-crafted fragment space, where the set of possible building blocks is defined by human experts \citep{yang_hit_2021, zhou_optimization_2019}.
+In both cases the action space is given, not learned — it is a modelling assumption imposed before training begins.
+On the other hand, latest advances in \gls{rl} \citep{rybkin2019clasp,edwards2019ilpo,ye2023ficc,schmidt2024lapo,bruce2024genie} suggest that learning the action space itself can be a powerful alternative to this fixed design.
 
-\section{What's out of scope [This section is just for draft, to remove in the final draft]}
-\begin{enumerate}
-    \item Properties-conditioned generation models. \textbf{Why?} Saturated, not worth going there. If we go there, we won't have any signal to say we are better.
-    \item 
-\end{enumerate}
-
-\section{Related Work [Nagham]}
-\subsection{Protein-Ligand Generative Models}
-Initial work on protein-conditioned molecule generation focused on autoregressive models. Pocket2Mol (\citet{peng2022pocket2mol}) introduced one of the first frameworks to generate 3D ligand structures conditioned on protein pockets, using a two-stage autoregressive process: first generating atom types and then their coordinates. While it showed promising results, Pocket2Mol suffered from low structural diversity and lacked mechanisms to explicitly model interactions between the ligand and protein. 
-
-To address these limitations, TargetDiff (\citet{guan3d}) introduced a fully generative SE(3)-equivariant diffusion model, jointly generating atom types and coordinates in a continuous manner. Though more expressive, TargetDiff was prone to generating chemically invalid structures and required complex training dynamics. DecompDiff (\citet{guan_decompdiff:_2023} )responded to this by decoupling geometric generation from interaction modeling through two diffusion priors: one for 3D ligand structure, and one for non-covalent interactions—leading to better docking and interaction fidelity. However, these diffusion-based approaches often suffer from long sampling times and lack fine-grained interpretability.
-
-To improve control and enable multi-task generation, DiffSBDD (\citet{schneuing2024diffsbdd}) proposed a unified model for generation, inpainting, and property optimization using a single SE(3)-equivariant architecture, though it still relied on manually engineered conditioning signals. Following this, BADGER (\citet{jian2024generalbindingaffinityguidance}) introduced binding-affinity-guided diffusion, using a learned energy proxy to explicitly steer generated samples toward high-affinity ligands, improving docking scores by 60\%, but still operating within latent diffusion trajectories. DiffDTM (\citet{huang_diffdtm:_2023}) tackled the challenge of multi-target drug design without requiring 3D structures by fusing protein sequences and molecular graphs in a one-shot diffusion framework allowing target generalization, but without 3D structural control. An analogous sequence-to-3D latent flow approach in Wiley’s GraphVF (\citet{sun_graphvf:_2023}) fused 2D and 3D representations via variational flows for protein-specific generation, but actions remained latent and opaque.
-
-More classical structure-focused methods such as NeuralPLexer (\citet{qiao_state-specific_2024}) and surface-aware diffusion models (e.g., SurfDock (\citet{cao_surfdock_2025})) integrated hierarchical generation and explicit surface potentials to improve binding realism. A foundational work (Sci Rep (\citet{stepniewska-dziubinska_improving_2020})) emphasized the need for multi-step atom placement in ligand binding, but lacked generative modeling. A recent model (\citet{kong_molecule_2024}) introduced explicit receptor–ligand torsion-aware diffusion to better respect conformational degrees of freedom, yet still lacked interpretable action strategies. Meanwhile, end-to-end docking benchmarks (\citet{morehead2024posebench}) and complex-generative diffusion implementations illustrated that current approaches still struggle with balancing chemical validity, diversity, and binding specificity.
-
-More recently, DrugGPS (\citet{zhang2023learning}) introduced flow-based pocket sampling with explicit interaction priors, like hydrogen bonds, demonstrating strong Vina and RMSD performance but still relying on fixed guidance rules. DrugFlow (\citet{schneuing2025multidomain}) innovated with a hybrid flow model combining continuous flow matching and discrete Markov bridges to jointly sample ligand geometry and chemistry, even modeling protein-side conformations. However, it still operates under fixed sampling trajectories and lacks explicit, learnable assembly steps. Similarly, PocketFlow (\citet{jiangpocketflow}) incorporated physically motivated priors like hydrogen bonding to refine flow-based generation, yet did not address the challenge of learning discrete, interpretable decision policies.
-
-Despite this progression, current models, whether autoregressive, diffusion, or flow-based, depend on fixed action definitions or continuous generative trajectories. In contrast, our proposed method frames protein–ligand generation as a reinforcement learning fine-tuned autoregressive process equipped with a learned latent action model, allowing the model to discover the atomic or substructural actions most useful for successful binding and drug-likeness. This removes the need for handcrafted priors while providing fine-grained control over molecular assembly in a pocket-aware context that is absent in previous models.
-
-\subsection{Protein-Ligand Generation via RL-based Generative Models}
-Reinforcement learning has been widely explored to add adaptability and goal-directed control in ligand generation. Early successes like MolDQN (\citet{zhou_optimization_2019}) demonstrated that chemically valid molecules could be constructed via atom-level modifications, but these approaches were limited to 2D graph structures and neglected 3D binding context. To overcome this, methods like FREED (\citet{yang_hit_2021}) introduced fragment-based RL with explorative replay to balance structural realism and docking-based rewards, yet still relied on manually curated fragment libraries and fixed templates. TargetVAE (\citet{ngo_target-aware_2023}) included protein context and docking feedback but did not generate explicit 3D ligand conformations within binding pockets.
-
-More recent developments improved scalability and flexibility. MolRL‑MGPT (\citet{hu2024novo}) proposed a multi-agent GPT architecture for collaborative sequence-based molecule generation, encouraging diversity and property optimization across agents, a significant step toward richer RL exploration. Meanwhile, BindGPT (\citet{zholus_bindgpt:_2024}) extended this concept to 3D by leveraging transformer architectures that directly generate pocket-conditioned ligand geometries, addressing limitations of 2D sequence-to-molecule mappings. However, both MolRL-MGPT and BindGPT still employed token-based actions in predefined vocabularies, without learning action primitives specific to pocket interactions.
-
-Two additional advances further clarified the role of RL design. ChemRLformer (\citet{ghugare_searching_2023}) systematically analyzed design choices in text-based RL for molecular generation, showing that careful grammar, replay strategy, and policy regularization significantly impact docking performance, highlighting that architecture alone is not sufficient. In parallel, \citet{ahmed_improving_2025} demonstrated that PPO-based fine-tuning of language models with composite rewards (validity, property, and docking) can notably improve molecular quality, but still lacked explicit action granularity to build molecules in 3D. 
-
-Despite these improvements, current RL approaches either rely on token- or fragment-based actions without learning actions from environment interactions, or they omit 3D protein context in policy design. In contrast, our work integrates both worlds: we use an autoregressive model capable of constructing ligand structures step-by-step in 3D, and we optimize it via RL where the latent action model learns pocket-specific actions, rather than depending on static vocabularies or handcrafted fragments. This enables interpretable, flexible assembly strategies that are fully trained to maximize binding affinity and structural correctness.
-
-% \citet{you2018graph} designs an RL pipeline for molecule generation.
-% However, a) the action space is not learnt, and b) they don't have a pretraining phase, but only RL.
-
-% \citet{loeffler2024reinvent} 
-
-% Unconditional de-novo generation
-
-% Goal-oriented generation (i.e. property-conditioned + target-aware generation)
-
-% Edit/replace/delete operations
-
-% RL finetuning
+Here, we investigate whether this principle can be applied to molecule generation, and whether it can yield competitive results compared to the standard token-based approach.
+We take a first step towards answering it, by conducting a controlled study in a simpler but structurally analogous setting: \gls{smiles}-based molecule generation on ZINC \citep{irwin2012zinc}, with properties computed by RDKit \citep{landrum2006rdkit} as rewards.
+We compare a GPT baseline finetuned with \gls{rl} in the token vocabulary space against our method, which trains a \gls{lam} on the same data and finetunes a policy in the resulting latent space.
+We sweep the codebook size across values both smaller and larger than the token vocabulary to characterise how compression affects both generation quality and \gls{rl} performance.
+Our goal is not to claim that latent action spaces are universally superior, but to establish whether they are a viable and competitive alternative -- a necessary condition before applying them to the harder 3D setting.
+% Beyond competitive performance, a learned action space is a gateway to interpretability.
+% Hand-crafted fragment libraries encode what chemists already know; a \gls{lam} codebook encodes what the data suggests are the meaningful primitive moves in molecular space.
+% Inspecting the learned codes may thus reveal recurrent structural patterns -- effective building blocks or edit operations -- that are not obvious from domain knowledge alone, providing a data-driven counterpart to expert-designed fragment vocabularies.
+% In this sense, our approach is not merely a technical alternative to token-based \gls{rl}: it is a step towards letting the model discover the language of molecular assembly from data.
 
 
-% \section{Preliminaries}
-% \subsection{Diffusion models}
+\section{Related Work}
 
-% \subsection{Autoregressive models}
+% \citet{haddad2025targeted}: RL in the *continuous* VAE latent space (PPO). Similar spirit but continuous latent, not discrete. Differentiate: we learn a discrete latent action space via VQ-VAE.
 
-% \subsection{Representing molecules}
+% \citet{mbousob2024latent}: VERY SIMILAR — latent space RL fine-tuning of a generative model for small molecules, targeting protein binding. Key difference to establish: they use a continuous VAE latent space; we use a discrete VQ-VAE codebook (learned action space à la GENIE). Must read carefully and position against this.
 
-% \subsection{Reinforcement Learning}
+% \citet{sha2024goaldirected}: policy gradient fine-tuning of a graph-based generative model. Fixed action space (graph operations). In bib.
 
-% \subsection{Interactive generative models}
-% Genie
-
-\section{Methods [Edu]}
-We interpret the generation of a moledule as a sequential decision making problem.
-We hypothesise that molecule generation can be cast as a \gls{mdp}, and that it exists an action space such that a finite sequence of actions intervening on an existing set of atoms and bonds produces a molecule with specific characteristics.
-
-For example, ...
-
-Formally, we consider an \gls{mdp} $\mathcal{M} = \{\mathcal{S},\mathcal{A},\gamma,\mu,R\}$.
-Here $\mathcal{S} = \mathbb{R}^{t,d}$
-
-To operationalise the problem, we consider a parametric model $\hat{y}= GEN(ENC(x, \theta_1), LAM(x, \theta_2),)$.
-Here, $GEN$ is the model, $x$ is ..., $y$ is ....
-$ENC$ is ..., and $LAM$ is ... .
+% \citet{you2018graph}: GCPN — already in bib and cited in introduction.
 
 
-\subsection{Imitation policy}
-The model using the \gls{lam} outputs a policy the action is a function of both the current and the future step $\pi(a | x_t, x_{t+1})$.
-Since this policy is future-conditioned, 
+\section{Methods}
 
-To generate molecules using the \gls{lam} model, we learn a policy conditioned on the present, from the that conditioned on the future that comes from the \gls{lam} model:
-\begin{align}
-    \text{argmin}_\theta\, \mathcal{L}(x_t, x_{t+1}) = ||\pi^\theta(a | x_t) -  \pi(a | x_t, x_{t+1}) ||_2^2
-\end{align}
-
-
-(N, B, T) -> (B * N, T)
-
-
-\subsection{Datasets}
-\begin{table}
-    \begin{tabular}{lcc}
-        \textit{Dataset} & \textit{N. samples} & \textit{N. tokens}\\
-        ZINC & & 8M
-    \end{tabular}
-\end{table}
-
-
-\subsection{Pretraining}
-Imitation learning on \textit{InterMol}
-
-\subsection{Finetuning}
-Reinforcement learning on docking score or properties threshold.
-
-\subsection{Evaluation}
+TODO
 
 
 \section{Experiments}
-% Experiments @ https://wandb.ai/naghamosman/interdiff
-\subsection{Does edit/replace/delete operations improve the generation?}
+
+TODO
 
 
-\subsection{Does the RL finetuning work?}
-
-Take a SMILES dataset, we start from:
-\begin{enumerate}
-    \item ZINC (600K parameters)
-    \item MOSES (1.5M parameters)
-    % \item GUACAMOL
-    \item PubChem
-\end{enumerate}
-
-we fit it with the following configs:
-\begin{enumerate}[label=\Alph*.]
-    \item Transformers
-    \item Transformers + Latent Action Model
-    \item Transformers + RL finetuning on vocab actions
-    \item Transformers + Latent Action Model + RL finetuning latent actions
-\end{enumerate}
-
-
-
-
-\subsection{Does target information improve the docking score?}
-
-
-
-\subsection{Does conditioning on the target work better than overfitting to a target?}
-
-
-\subsection{Does the autoregressive part of the diffusion model help generation?}
-
-\bibliographystyle{plainnat} % Or use IEEEtran, apalike, etc.
+\bibliographystyle{plainnat}
 \bibliography{tmlr}
-
-
-\section{Tuning}
-\subsection{Vocab size}
 
 \end{document}
