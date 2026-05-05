@@ -66,8 +66,8 @@ Finding new drugs is essential for addressing diseases where current therapies a
 Yet, the process is slow \citep{deore2019stages}, costly \citep{dickson2009cost}, and resource-intensive \citep{paul2010improve}: developing a new drug takes on average 10--15 years and can cost over \$2 billion \citep{hughes2011principles, dickson2009cost}, with traditional high-throughput screening yielding hit rates below 0.1\% \citep{zhu2013hit}.
 Overall, the scale of chemical space far exceeds what can be explored experimentally \citep{polishchuk2013estimation}, making computational methods not merely useful but necessary.
 
-Recently, deep generative models set out to shorten this cycle by digitally simulating and automating this discovery process~\citep{atomwise2024ai,?,?,?}.
-These models -- whether autoregressive~\citep{?}, diffusion-based \citep{vignac2023midi,cornet2024equivariant}, or flow-matching~\citep{dunn_mixed_2024} -- are trained to fit a data distribution: to generate molecules that look like those in a dataset.
+Recently, deep generative models set out to shorten this cycle by digitally simulating and automating this discovery process~\citep{atomwise2024ai,zhavoronkov2019deep,stokes2020deep,zeng2022deep}.
+These models -- whether autoregressive~\citep{bagal2022molgpt}, diffusion-based \citep{vignac2023midi,cornet2024equivariant}, or flow-matching~\citep{dunn_mixed_2024} -- are trained to fit a data distribution: to generate molecules that look like those in a dataset.
 While results appear promising for this ex-novo generation, finding molecules that \textit{do} exhibit the desired properties -- e.g., solubility, bioavailability, binding affinity, toxicity -- is tied to the underlying physics and chemistry, as these are much rarer in the data by construction.
 Producing such molecules in a targeted way using ex-novo, unconditional generation is thus harder, and relies only on the generalisation capabilities of the model: the hope that a model will stumble upon them by chance.
 Conditional generation models~\citep{peng2022pocket2mol, corso2023diffdock, guan3d, morehead2025flowdock}, on the other hand, can steer the generation process towards specific goals and molecular properties.
@@ -75,19 +75,19 @@ Conditional generation models~\citep{peng2022pocket2mol, corso2023diffdock, guan
 
 A natural approach to steer this process towards desired properties is the pretrain-then-finetune paradigm that has proven transformative for language models \citep{ouyang2022training}: a model first acquires a strong prior over valid molecules from data, and is then finetuned with \gls{rl} against a reward that encodes the target property -- binding affinity, drug-likeness, synthetic accessibility—without requiring a differentiable objective.
 
-While \gls{rl} approaches to molecule generation exist \citep{zhou_optimization_2019, you2018graph, ghugare_searching_2023, hu2024novo, loeffler2024reinvent, yang_hit_2021}, they all share a common assumption: the action space is fixed before training begins, either as a token vocabulary -- treating each \gls{smiles} character or atom type as a primitive action \citep{ghugare_searching_2023, hu2024novo, loeffler2024reinvent} -- or as a hand-crafted fragment space, where the set of possible building blocks is defined by human experts \citep{yang_hit_2021, zhou_optimization_2019}.
+While this kind of \gls{rl} approaches to molecule generation exist \citep{zhou_optimization_2019, you2018graph, ghugare_searching_2023, hu2024novo, loeffler2024reinvent, yang_hit_2021}, they all share a common assumption: the action space is fixed before training begins, either as a token vocabulary -- treating each \gls{smiles} character or atom type as a primitive action \citep{ghugare_searching_2023, hu2024novo, loeffler2024reinvent} -- or as a hand-crafted fragment space, where the set of possible building blocks is defined by human experts \citep{yang_hit_2021, zhou_optimization_2019}.
 In both cases the action space is given, not learned — it is a modelling assumption imposed before training begins.
 Recent advances in \gls{rl} \citep{rybkin2019clasp,edwards2019ilpo,ye2023ficc,schmidt2024lapo,bruce2024genie} suggest, however, that learning the action space itself can be a powerful alternative to this fixed design.
+Beyond competitive performance, a learned action space is a gateway to interpretability and discovery.
+Hand-crafted fragment libraries encode what chemists already know; a \gls{lam} codebook encodes what the data suggests are the meaningful primitive moves in molecular space.
+Learning, using and inspecting new latent codes may thus open the door to discovering new ways of assembling molecules.
 
 Here, we investigate whether this principle transfers to molecule generation and yields competitive results against the standard token-based approach.
 We conduct a controlled study on \gls{smiles}-based molecule generation using ZINC \citep{irwin2012zinc}, with properties computed by RDKit \citep{landrum2006rdkit} as rewards.
 We compare a GPT baseline finetuned with \gls{rl} in the token vocabulary space against our method, which trains a \gls{lam} on the same data and finetunes a policy in the resulting latent space.
 We sweep the codebook size across values both smaller and larger than the token vocabulary to characterise how compression affects both generation quality and \gls{rl} performance.
 Our goal is not to claim that latent action spaces are universally superior, but to establish whether they are a viable and competitive alternative -- a necessary condition before applying them to the harder 3D setting.
-% Beyond competitive performance, a learned action space is a gateway to interpretability.
-% Hand-crafted fragment libraries encode what chemists already know; a \gls{lam} codebook encodes what the data suggests are the meaningful primitive moves in molecular space.
-% Inspecting the learned codes may thus reveal recurrent structural patterns -- effective building blocks or edit operations -- that are not obvious from domain knowledge alone, providing a data-driven counterpart to expert-designed fragment vocabularies.
-% In this sense, our approach is not merely a technical alternative to token-based \gls{rl}: it is a step towards letting the model discover the language of molecular assembly from data.
+
 
 
 \section{Related Work}
