@@ -63,24 +63,22 @@
 \section{Introduction}
 
 Finding new drugs is essential for addressing diseases where current therapies are inadequate or ineffective \citep{singh2023drug}.
-Yet, the process is slow \citep{deore2019stages}, costly \citep{dickson2009cost}, and resource-intensive \citep{paul2010improve}: developing a new drug takes on average 10--15 years and can cost over \$2 billion \citep{hughes2011principles, dickson2009cost}, with traditional high-throughput screening yielding hit rates below 0.1\% \citep{zhu2013hit}.
-Overall, the scale of chemical space far exceeds what can be explored experimentally \citep{polishchuk2013estimation}, making computational methods not merely useful but necessary.
-
+% Yet, the process is slow \citep{deore2019stages}, costly \citep{dickson2009cost}, and resource-intensive \citep{paul2010improve}: developing a new drug takes on average 10--15 years and can cost over \$2 billion \citep{hughes2011principles, dickson2009cost}, with traditional high-throughput screening yielding hit rates below 0.1\% \citep{zhu2013hit}.
+% Overall, the scale of chemical space far exceeds what can be explored experimentally \citep{polishchuk2013estimation}, making computational methods not merely useful but necessary.
+%
 Recently, deep generative models set out to shorten this cycle by digitally simulating and automating this discovery process~\citep{atomwise2024ai,zhavoronkov2019deep,stokes2020deep,zeng2022deep}.
 These models -- whether autoregressive~\citep{bagal2022molgpt}, diffusion-based \citep{vignac2023midi,cornet2024equivariant}, or flow-matching~\citep{dunn_mixed_2024} -- are trained to fit a data distribution: to generate molecules that look like those in a dataset.
 While results appear promising for this ex-novo generation, finding molecules that \textit{do} exhibit the desired properties -- e.g., solubility, bioavailability, binding affinity, toxicity -- is tied to the underlying physics and chemistry, as these are much rarer in the data by construction.
 Producing such molecules in a targeted way using ex-novo, unconditional generation is thus harder, and relies only on the generalisation capabilities of the model: the hope that a model will stumble upon them by chance.
-Conditional generation models~\citep{peng2022pocket2mol, corso2023diffdock, guan3d, morehead2025flowdock}, on the other hand, can steer the generation process towards specific goals and molecular properties.
+% Conditional generation models~\citep{peng2022pocket2mol, corso2023diffdock, guan3d, morehead2025flowdock}, on the other hand, can steer the generation process towards specific goals and molecular properties.
 % At inference time, these methods enable direct control over the wanted specificities of the generated molecules, for example, by varying the target molecule in a ligand-protein problem, or desired properties, such as solubility or toxicity, without retraining.
 
-A natural approach to steer this process towards desired properties is the pretrain-then-finetune paradigm that has proven transformative for language models \citep{ouyang2022training}: a model first acquires a strong prior over valid molecules from data, and is then finetuned with \gls{rl} against a reward that encodes the target property -- binding affinity, drug-likeness, synthetic accessibility—without requiring a differentiable objective.
+A natural approach to steer this process towards desired properties is the pretrain-then-finetune paradigm that has proven transformative for language models \citep{ouyang2022training}: a model first acquires a strong prior over valid molecules from data, and is then finetuned with \gls{rl} against a reward that encodes the target property -- binding affinity, drug-likeness, synthetic accessibility -- without requiring a differentiable objective.
 
 While this kind of \gls{rl} approaches to molecule generation exist \citep{zhou_optimization_2019, you2018graph, ghugare_searching_2023, hu2024novo, loeffler2024reinvent, yang_hit_2021}, they all share a common assumption: the action space is fixed before training begins, either as a token vocabulary -- treating each \gls{smiles} character or atom type as a primitive action \citep{ghugare_searching_2023, hu2024novo, loeffler2024reinvent} -- or as a hand-crafted fragment space, where the set of possible building blocks is defined by human experts \citep{yang_hit_2021, zhou_optimization_2019}.
-In both cases the action space is given, not learned — it is a modelling assumption imposed before training begins.
+In both cases the action space is given, not learned, and represents a modelling assumption imposed before training begins.
 Recent advances in \gls{rl} \citep{rybkin2019clasp,edwards2019ilpo,ye2023ficc,schmidt2024lapo,bruce2024genie} suggest, however, that learning the action space itself can be a powerful alternative to this fixed design.
-Beyond competitive performance, a learned action space is a gateway to interpretability and discovery.
-Hand-crafted fragment libraries encode what chemists already know; a \gls{lam} codebook encodes what the data suggests are the meaningful primitive moves in molecular space.
-Learning, using and inspecting new latent codes may thus open the door to discovering new ways of assembling molecules.
+Beyond competitive performance, a learned action space is a gateway to interpretability and discovery: while hand-crafted fragment libraries encode what chemists already know, a \gls{lam} codebook encodes what the data suggests are the meaningful primitive moves in molecular space.
 
 Here, we investigate whether this principle transfers to molecule generation and yields competitive results against the standard token-based approach.
 We conduct a controlled study on \gls{smiles}-based molecule generation using ZINC \citep{irwin2012zinc}, with properties computed by RDKit \citep{landrum2006rdkit} as rewards.
@@ -89,8 +87,13 @@ We sweep the codebook size across values both smaller and larger than the token 
 Our goal is not to claim that latent action spaces are universally superior, but to establish whether they are a viable and competitive alternative -- a necessary condition before applying them to the harder 3D setting.
 
 
-
 \section{Related Work}
+
+\paragraph{Other RL approaches.}
+
+
+\paragraph{Conditional generation approaches.}
+
 
 % \citet{haddad2025targeted}: RL in the *continuous* VAE latent space (PPO). Similar spirit but continuous latent, not discrete. Differentiate: we learn a discrete latent action space via VQ-VAE.
 
@@ -101,14 +104,65 @@ Our goal is not to claim that latent action spaces are universally superior, but
 % \citet{you2018graph}: GCPN — already in bib and cited in introduction.
 
 
+
+\section{Background}
+
+
+
 \section{Methods}
 
-TODO
 
 
-\section{Experiments}
+\section{Experimental settings}
 
-TODO
+\paragraph{Baselines.}
+We compare our method against a GPT-style autoregressive model pretrained on SMILES via next-token prediction and then fine-tuned with \gls{rl} directly in the token vocabulary space.
+Both the baseline and our method share the same transformer architecture: 4 layers, 4 attention heads, embedding dimension 384, and a context length of 128 tokens.
+For the baseline we vary the vocabulary size across 50, 512, and 4096 tokens, spanning action spaces smaller, similar, and larger than those used by our method.
+For our method we vary the \gls{lam} codebook size across 25, 128, and 256 latent codes.
+
+TODO: We should also score against fragment-based methods
+
+\paragraph{Dataset.}
+We train and evaluate on ZINC \citep{irwin2012zinc}, a set of 249,455 commercially available drug-like molecules represented as \gls{smiles} strings, using a 90\%/10\% train/validation split.
+All models share the same tokeniser and data pipeline.
+
+\paragraph{Tasks.}
+We consider five molecular property optimisation tasks, each defined by a binary reward computed by RDKit \citep{landrum2006rdkit}:
+\begin{enumerate*}[label=(\roman*)]
+      \item drug-likeness (QED $\geq 0.7$),
+      \item lipophilicity (LogP $\in [1.0,\, 3.5]$),
+      \item molecular weight (MW $\in [200,\, 450]$\,Da),
+      \item polar surface area (TPSA $\leq 90$\,\AA$^2$), and
+      \item synthetic accessibility (SA score $\leq 4.0$).
+\end{enumerate*}
+The agent receives a reward of 1 at episode termination if the completed molecule satisfies the target threshold, and 0 otherwise (including for invalid \gls{smiles}); all intermediate steps carry zero reward.
+
+\paragraph{Metrics.}
+We report \textit{validity} (fraction of generated \gls{smiles} that parse as chemically valid molecules), \textit{uniqueness} (fraction of valid \gls{smiles} that are distinct), \textit{novelty} (fraction of valid unique \gls{smiles} absent from the training set), and \textit{property satisfaction rate} (fraction of valid molecules meeting the target property threshold).
+
+\paragraph{Training details.}
+All \gls{rl} fine-tuning uses PPO \citep{schulman2017proximal} with 16 parallel environments, rollouts of 256 steps, and a total budget of 250\,M environment steps.
+The policy is updated with clip parameter $\varepsilon = 0.2$, entropy coefficient 0.01, value-function coefficient 0.5, GAE $\lambda = 0.95$, and discount $\gamma = 1.0$ (no discounting within an episode).
+The learning rate is $10^{-6}$ with linear annealing.
+Pretraining uses AdamW with learning rate $3 \times 10^{-4}$, cosine annealing, and a batch size of 512.
+
+
+
+\section{Experimental results}
+
+\subsection{Does a latent action model help learning (pretraining and finetuning)?}
+Experiment (main comparison): compare the learning curves of the baseline and our method during pretraining and finetuning, for a fixed codebook size (e.g., 2048 latent codes vs 512 tokens).
+
+\subsection{Can we compress the action space without hurting performance?}
+Experiment(lam compression): measure the amount of information loss or degradation in VUN metrics as we reduce the codebook size below the vocab size (e.g., 2048 latent codes vs 512 tokens), and whether this compression actually helps learning by comparing the learning curves of the compressed model against the baseline.
+
+\subsection{What is the impact of the codebook size on generation quality?}
+Experiment: sweep the codebook size across values smaller and larger than the token vocabulary, and report validity, uniqueness, novelty, and property satisfaction rate for each.
+
+\subsection{Does temperature have an impact on validity, uniqueness and novelty?}
+
+\subsection{Does the model generalise to different properties?}
 
 
 \bibliographystyle{plainnat}
