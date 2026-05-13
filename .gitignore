@@ -1,3 +1,8 @@
+# User-specific files
+.DS_Store
+CLAUDE.md
+
+# LaTeX intermediate files
 /latex.out
 /.vscode
 *.acn

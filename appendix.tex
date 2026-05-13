@@ -1,0 +1,9 @@
+\clearpage
+\appendix
+
+
+\section{Codebook normalisation does not stabilise training at large codebook sizes}
+In the scaling experiment, when the codebook size exceeds or is equal to the token vocabulary size, we observe training instability and performance degradation at lower losses.
+The model effectively converged and the val loss starts going up.
+To stabilise training and keep the model training for longer, we tried calculating the q loss of the commit loss of the vqvae on normalsised latents, rather than the raw latents, which are unbounded and can have large magnitudes that destabilise training.
+However, with that, the model scaled way worse. We should report these results.

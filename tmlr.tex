@@ -68,10 +68,7 @@ Finding new drugs is essential for addressing diseases where current therapies a
 %
 Recently, deep generative models set out to shorten this cycle by digitally simulating and automating this discovery process~\citep{atomwise2024ai,zhavoronkov2019deep,stokes2020deep,zeng2022deep}.
 These models -- whether autoregressive~\citep{bagal2022molgpt}, diffusion-based \citep{vignac2023midi,cornet2024equivariant}, or flow-matching~\citep{dunn_mixed_2024} -- are trained to fit a data distribution: to generate molecules that look like those in a dataset.
-While results appear promising for this ex-novo generation, finding molecules that \textit{do} exhibit the desired properties -- e.g., solubility, bioavailability, binding affinity, toxicity -- is tied to the underlying physics and chemistry, as these are much rarer in the data by construction.
-Producing such molecules in a targeted way using ex-novo, unconditional generation is thus harder, and relies only on the generalisation capabilities of the model: the hope that a model will stumble upon them by chance.
-% Conditional generation models~\citep{peng2022pocket2mol, corso2023diffdock, guan3d, morehead2025flowdock}, on the other hand, can steer the generation process towards specific goals and molecular properties.
-% At inference time, these methods enable direct control over the wanted specificities of the generated molecules, for example, by varying the target molecule in a ligand-protein problem, or desired properties, such as solubility or toxicity, without retraining.
+While results appear promising for this imitation-based generation, finding molecules that \textit{do} exhibit the desired properties -- e.g., solubility, bioavailability, binding affinity, toxicity -- is hard, as the success relies only on the generalisation capabilities of the model: the hope that a model will stumble upon them by chance.
 
 A natural approach to steer this process towards desired properties is the pretrain-then-finetune paradigm that has proven transformative for language models \citep{ouyang2022training}: a model first acquires a strong prior over valid molecules from data, and is then finetuned with \gls{rl} against a reward that encodes the target property -- binding affinity, drug-likeness, synthetic accessibility -- without requiring a differentiable objective.
 
@@ -89,11 +86,12 @@ Our goal is not to claim that latent action spaces are universally superior, but
 
 \section{Related Work}
 
-\paragraph{Other RL approaches.}
+\paragraph{\gls{rl}-based approaches.}
 
 
 \paragraph{Conditional generation approaches.}
-
+% Conditional generation models~\citep{peng2022pocket2mol, corso2023diffdock, guan3d, morehead2025flowdock}, on the other hand, can steer the generation process towards specific goals and molecular properties.
+% At inference time, these methods enable direct control over the wanted specificities of the generated molecules, for example, by varying the target molecule in a ligand-protein problem, or desired properties, such as solubility or toxicity, without retraining.
 
 % \citet{haddad2025targeted}: RL in the *continuous* VAE latent space (PPO). Similar spirit but continuous latent, not discrete. Differentiate: we learn a discrete latent action space via VQ-VAE.
 
@@ -106,10 +104,17 @@ Our goal is not to claim that latent action spaces are universally superior, but
 
 
 \section{Background}
+\paragraph{Text-based molecule generation.}
+\paragraph{Reinforcement learning.}
+\paragraph{Latent action models.}
 
 
 
 \section{Methods}
+\subsection{Intuition}
+\subsection{Formalism}
+\subsection{Implementation}
+
 
 
 
@@ -127,7 +132,20 @@ TODO: We should also score against fragment-based methods
 We train and evaluate on ZINC \citep{irwin2012zinc}, a set of 249,455 commercially available drug-like molecules represented as \gls{smiles} strings, using a 90\%/10\% train/validation split.
 All models share the same tokeniser and data pipeline.
 
-\paragraph{Tasks.}
+
+\paragraph{Training details.}
+All pretraining stages run across 20000 steps, and a batch size of 2048 samples, yielding roughtly 160 epochs over the training set.
+
+All \gls{rl} fine-tuning uses PPO \citep{schulman2017proximal} with 16 parallel environments, rollouts of 256 steps, and a total budget of 250\,M environment steps.
+The policy is updated with clip parameter $\varepsilon = 0.2$, entropy coefficient 0.01, value-function coefficient 0.5, GAE $\lambda = 0.95$, and discount $\gamma = 1.0$ (no discounting within an episode).
+The learning rate is $10^{-6}$ with linear annealing.
+Pretraining uses AdamW with learning rate $3 \times 10^{-4}$, cosine annealing, and a batch size of 512.
+
+
+\paragraph{Evaluation details.}
+We evaluate the models at the pretraining stage by monitoring the validation loss.
+In the finetuning stage, we monitor the reward curve and evaluate the final performance by sampling 10,000 \gls{smiles} from the trained policy and computing the following metrics.
+We report \textit{validity} (fraction of generated \gls{smiles} that parse as chemically valid molecules), \textit{uniqueness} (fraction of valid \gls{smiles} that are distinct), \textit{novelty} (fraction of valid unique \gls{smiles} absent from the training set), and \textit{property satisfaction rate} (fraction of valid molecules meeting the target property threshold).
 We consider five molecular property optimisation tasks, each defined by a binary reward computed by RDKit \citep{landrum2006rdkit}:
 \begin{enumerate*}[label=(\roman*)]
       \item drug-likeness (QED $\geq 0.7$),
@@ -138,34 +156,65 @@ We consider five molecular property optimisation tasks, each defined by a binary
 \end{enumerate*}
 The agent receives a reward of 1 at episode termination if the completed molecule satisfies the target threshold, and 0 otherwise (including for invalid \gls{smiles}); all intermediate steps carry zero reward.
 
-\paragraph{Metrics.}
-We report \textit{validity} (fraction of generated \gls{smiles} that parse as chemically valid molecules), \textit{uniqueness} (fraction of valid \gls{smiles} that are distinct), \textit{novelty} (fraction of valid unique \gls{smiles} absent from the training set), and \textit{property satisfaction rate} (fraction of valid molecules meeting the target property threshold).
+\section{Experimental results and discussion}
 
-\paragraph{Training details.}
-All \gls{rl} fine-tuning uses PPO \citep{schulman2017proximal} with 16 parallel environments, rollouts of 256 steps, and a total budget of 250\,M environment steps.
-The policy is updated with clip parameter $\varepsilon = 0.2$, entropy coefficient 0.01, value-function coefficient 0.5, GAE $\lambda = 0.95$, and discount $\gamma = 1.0$ (no discounting within an episode).
-The learning rate is $10^{-6}$ with linear annealing.
-Pretraining uses AdamW with learning rate $3 \times 10^{-4}$, cosine annealing, and a batch size of 512.
+\subsection{Scaling behavour}
+In this experiment we look at how does the model performance changes as we change the codebook size of the \gls{lam}.
+While keeping the token vocabulary size fixed at 2048, we sweep the codebook size across six action spaces of size -- 8, 32, 128, 512, 1024, and 2048 -- and monitor the best validation loss across three random seeds for each codebook size.
+Results are shown in Figure~\ref{fig:codebook_size}.
+
+We observe that, as the codebook size increases, the performance increases,suggesting that larger codebooks allow the model to learn a more expressive and effective latent action space.
+Saturation occurs when the codebook size reaches the token vocabulary size, suggesting that the model is able to learn a latent action space that is as effective as the token vocabulary when the codebook size is sufficiently large.
+To confirm the findings, we repeat the experiment at a vocabulary size of 512 and observe a similar trend, with saturation occurring at a smaller codebook size, suggesting that the optimal codebook size may depend on the token vocabulary size.
 
 
+\subsection{Scaling latent action spaces vs scaling token vocabularies.}
+Experiment (ablation): compare the learning curves of the baseline and our method across different codebook sizes (e.g., 128, 512, 1024, 2048 latent codes vs 128, 512, 1024, 2048 vocab sizes (cross product)) to characterise how compression affects both generation quality and RL performance.
+This will also shed light on the compressibility of the molecule generation problem: if we can achieve competitive performance with a codebook size much smaller than the token vocabulary, it suggests that the problem is highly compressible and that the \gls{lam} is learning a more efficient representation of the action space.
 
-\section{Experimental results}
 
-\subsection{Does a latent action model help learning (pretraining and finetuning)?}
-Experiment (main comparison): compare the learning curves of the baseline and our method during pretraining and finetuning, for a fixed codebook size (e.g., 2048 latent codes vs 512 tokens).
+\subsection{Does a learned latent action space have an impact on finetuning?}
+Experiment: compare the learning curves of the baseline and our method across different tasks to characterise how the learned latent action space affects the optimisation landscape and the ease of learning.
 
-\subsection{Can we compress the action space without hurting performance?}
-Experiment(lam compression): measure the amount of information loss or degradation in VUN metrics as we reduce the codebook size below the vocab size (e.g., 2048 latent codes vs 512 tokens), and whether this compression actually helps learning by comparing the learning curves of the compressed model against the baseline.
 
-\subsection{What is the impact of the codebook size on generation quality?}
-Experiment: sweep the codebook size across values smaller and larger than the token vocabulary, and report validity, uniqueness, novelty, and property satisfaction rate for each.
+\subsection{Does policy distillation have any impact on finetuning?}
+Experiment (ablation): compare the learning curves of our method with and without policy distillation. Without distillation, the policy is trained from scratch in the latent space; with distillation, it first learns to imitate the pretrained GPT policy in the latent space before finetuning with RL.
 
-\subsection{Does temperature have an impact on validity, uniqueness and novelty?}
+Partial results reveal a fundamental mismatch: the LAM assigns latent codes based on the full sequence, but the PolicyNetwork has to predict those codes from the prefix only.
+At small codebook sizes there are few codes so the policy can get away with coarse predictions, but at larger codebook sizes the code assignments become more fine-grained and harder to predict from a prefix — the "right" code depends increasingly on future tokens the policy hasn't seen yet.
+So the distillation loss plateauing high isn't just underfitting — it's partly irreducible: the prefix doesn't contain enough information to perfectly recover the LAM's assignment.
 
-\subsection{Does the model generalise to different properties?}
 
+\subsection{How do sampling strategies affect non-optimised properties?}
+
+% \subsection{Does temperature have an impact on validity, uniqueness and novelty?}
+
+
+% \subsection{Does the model generalise to different properties?}
+
+
+\section{Conclusions}
+
+
+\paragraph{Summary.}
+
+
+\paragraph{Limitations.}
+Limitation on evidence. 
+Evidence is limited to a single dataset (ZINC), representation (SMILES), and set of properties (computed by RDKit).
+Future work should expand this to other datasets to establish the generality of our findings;
+it should also explore other representations (e.g., graphs, 3D);
+and other properties (e.g., docking scores, binding affinity, toxicity) to establish the generality of our findings. 
+
+Limitation on the method.
+
+
+\paragraph{Future work.}
+Beyond additive interventions: since latent actions are very versatile in what they learn, can we push them to learn more complex, non-additive transformations that are more meaningful in chemistry? For example, can we learn a codebook of chemical reactions, where each latent action corresponds to a specific reaction that transforms one molecule into another? Or simple edit, rewrite, and delete operations?
 
 \bibliographystyle{plainnat}
 \bibliography{tmlr}
+
+\input{appendix}
 
 \end{document}
