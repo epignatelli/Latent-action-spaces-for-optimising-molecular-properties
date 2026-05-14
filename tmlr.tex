@@ -111,9 +111,9 @@ SMILES-based representation creates a duality between text and molecules. Each m
 This representation allows the use of language models for molecular design.
 GPT-based models, widely known for their use in text generation, are based on a decoder-only Transformer architecture trained to predict the next piece of text, denoted as token, given as context a sequence of tokens. Formally, an input text \(m\) is first mapped by a tokenizer to a sequence
 \[
-\operatorname{tok}(s_m) = (x_1,\ldots,x_n), \qquad x_i \in \mathcal{V},
+      \operatorname{tok}(s_m) = (x_1,\ldots,x_n), \qquad x_i \in \mathcal{V},
 \]
-where \(\mathcal{V}\) denotes the token vocabulary. The model is then trained to 
+where \(\mathcal{V}\) denotes the token vocabulary. The model is then trained to
 
 
 \paragraph{Reinforcement learning.}
@@ -186,9 +186,39 @@ To confirm the findings, we repeat the experiment at a vocabulary size of 512 an
 
 
 \subsection{Scaling latent action spaces vs scaling token vocabularies.}
+\begin{figure}
+      \centering
+      \includegraphics[width=0.8\textwidth]{figures/fig3_combined_scaling_curve.png}
+      \caption{
+            Validation loss across different codebook sizes or vocabulary sizes. The x-axis shows the codebook size for our method and the vocabulary size for the baseline, while the y-axis shows the best validation loss achieved across three random seeds.
+      }
+      \label{fig:scaling_curve}
+\end{figure}
+
+\begin{figure}
+      \centering
+      \includegraphics[width=0.8\textwidth]{figures/fig2_cgpt_codebook_scaling.png}
+      \caption{
+      Training curves for the baseline and our method across different codebook sizes.
+      Solid lines show the mean loss on the training dataset and dotted lines show the mean loss on the validation dataset, both averaged across three random seeds. Shaded areas show 95\% confidence intervals across seeds.
+      }
+      \label{fig:scaling_codebook}
+\end{figure}
+
+\begin{figure}
+      \centering
+      \includegraphics[width=0.8\textwidth]{figures/fig1_gpt_vocab_scaling.png}
+      \caption{
+      Training curves for the baseline across different vocabulary sizes.
+      Solid lines show the mean loss on the training dataset and dotted lines show the mean loss on the validation dataset, both averaged across three random seeds. Shaded areas show 95\% confidence intervals across seeds.
+      }
+      \label{fig:scaling_vocabulary}
+\end{figure}
+
 Experiment (ablation): compare the learning curves of the baseline and our method across different codebook sizes (e.g., 128, 512, 1024, 2048 latent codes vs 128, 512, 1024, 2048 vocab sizes (cross product)) to characterise how compression affects both generation quality and RL performance.
 This will also shed light on the compressibility of the molecule generation problem: if we can achieve competitive performance with a codebook size much smaller than the token vocabulary, it suggests that the problem is highly compressible and that the \gls{lam} is learning a more efficient representation of the action space.
 
+Figure~\ref{fig:scaling_curve} shows that.
 
 \subsection{Does a learned latent action space have an impact on finetuning?}
 Experiment: compare the learning curves of the baseline and our method across different tasks to characterise how the learned latent action space affects the optimisation landscape and the ease of learning.
@@ -217,11 +247,11 @@ So the distillation loss plateauing high isn't just underfitting — it's partly
 
 
 \paragraph{Limitations.}
-Limitation on evidence. 
+Limitation on evidence.
 Evidence is limited to a single dataset (ZINC), representation (SMILES), and set of properties (computed by RDKit).
 Future work should expand this to other datasets to establish the generality of our findings;
 it should also explore other representations (e.g., graphs, 3D);
-and other properties (e.g., docking scores, binding affinity, toxicity) to establish the generality of our findings. 
+and other properties (e.g., docking scores, binding affinity, toxicity) to establish the generality of our findings.
 
 Limitation on the method.
 
