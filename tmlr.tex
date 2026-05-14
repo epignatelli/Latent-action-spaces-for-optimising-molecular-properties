@@ -27,6 +27,8 @@
 \newacronym{llm}{LLM}{Large Language Model}
 \newacronym{smiles}{SMILES}{Simplified Molecular Input Line Entry System}
 
+\newcommand{\tom}[1]{\textcolor{brown}{\textbf{tom: #1}}}
+
 \title{Towards Latent Action Spaces for RL-based Molecule Generation}
 
 % Authors must not appear in the submitted version. They should be hidden
@@ -103,10 +105,25 @@ Our goal is not to claim that latent action spaces are universally superior, but
 
 
 
-\section{Background}
+\section{Notation and background}
 \paragraph{Text-based molecule generation.}
+SMILES-based representation creates a duality between text and molecules. Each molecule $m$ can be represented by at least one SMILES string $s_m$\footnote{Although multiple SMILES strings may represent the same molecule, we use a canonical SMILES representation as in RDKit \texttt{Chem.MolToSmiles}, which is unique for a given molecular graph under a fixed canonicalization procedure and fixed choices regarding stereochemistry, charges, aromaticity, and tautomeric/protonation state.}, allowing chemical structures to be treated as sequences of characters.
+This representation allows the use of language models for molecular design.
+GPT-based models, widely known for their use in text generation, are based on a decoder-only Transformer architecture trained to predict the next piece of text, denoted as token, given as context a sequence of tokens. Formally, an input text \(m\) is first mapped by a tokenizer to a sequence
+\[
+\operatorname{tok}(s_m) = (x_1,\ldots,x_n), \qquad x_i \in \mathcal{V},
+\]
+where \(\mathcal{V}\) denotes the token vocabulary. The model is then trained to 
+
+
 \paragraph{Reinforcement learning.}
+
+
 \paragraph{Latent action models.}
+% Tommy you can take the RL background from here if you want (no need to) https://arxiv.org/pdf/2312.01072
+% or maybe here is shorter: https://arxiv.org/pdf/2409.12798
+% But again, no need to!! Feel free to ignore it and make it yours!
+\tom{sure}
 
 
 
